@@ -4,7 +4,7 @@
 %%%
 
 %% HOURS
-HOURS_OPEN = 12; 
+HOURS_OPEN = 3; 
 TICKET_TIER_PRICES = [30, 20, 10]; % Prices to get in every 4 hrs
 
 %% BAR A
@@ -21,7 +21,7 @@ MEAL_PRICES = 10 * ones(HOURS_OPEN);
 BAR_B_CAPACITY = 25; 
 
 %% DANCE FLOOR
-DANCE_COST = 5 * ones(HOURS_OPEN);
+DANCE_COST = 30 * ones(HOURS_OPEN);
 
 %%%
 %%% BUILD MODEL 
@@ -188,15 +188,62 @@ function [index_map, edge_matrix, upper_bound_matrix, lower_bound_matrix, costs_
 
 end
 
+function [solution, maximum_profit, has_solved, index_map, edge_matrix] = solveModel(hours_open, ticket_tier_prices, ....
+    small_drink_prices, medium_drink_prices, large_drink_prices, bar_a_sitting_capacity, bar_a_standing_capacity, ... 
+    meal_prices, bar_b_capacity, ... 
+    dance_costs)
+   
+    [index_map, edge_matrix, upper_bound_matrix, lower_bound_matrix, costs_matrix] = ...
+        buildGraph(hours_open, ticket_tier_prices, ....
+            small_drink_prices, medium_drink_prices, large_drink_prices, bar_a_sitting_capacity, bar_a_standing_capacity, ... 
+            meal_prices, bar_b_capacity, ... 
+            dance_costs);
+    
+    sinkNodeNames    = ["exit"];
+    sourceNodeNames  = ["tier_1_ticket", "tier_2_ticket", "tier_3_ticket"];
+    sinkNodes        = arrayfun(@(x) index_map({x}), sinkNodeNames);
+    sourceNodes      = arrayfun(@(x) index_map({x}), sourceNodeNames);
+    [solution, maximum_profit, fail_flag] = network_flow(edge_matrix, upper_bound_matrix, lower_bound_matrix, costs_matrix, sinkNodes, sourceNodes);
+    has_solved = false; 
+    switch fail_flag
+        case 3 
+            fprintf('The solution is feasible with respect to the relative ConstraintTolerance tolerance, but is not feasible with respect to the absolute tolerance.\n');
+        case 1 
+            has_solved = true;
+        case 0
+            fprintf('Number of iterations exceeded options.MaxIterations or solution time in seconds exceeded options.MaxTime.\n');
+        case -2
+            fprintf('No feasible point was found.\n');
+        case -3
+            fprintf('Problem is unbounded.\n');
+        case -4
+            fprintf('NaN value was encountered during execution of the algorithm.\n');
+        case -5
+            fprintf('Both primal and dual problems are infeasible.\n');
+        case -7
+            fprintf('Search direction became too small. No further progress could be made.\n');
+        case -9
+            fprintf('Solver lost feasibility.\n');
+    end
+end
 
+function displayResult(solution, index_map, edge_matrix)
+    disp(index_map)
+    disp(solution)
+end
 %%% 
 %%% RUNNING
 %%%
 
-[index_map, edge_matrix, upper_bound_matrix, lower_bound_matrix, costs_matrix] = ...
-    buildGraph(HOURS_OPEN, TICKET_TIER_PRICES, ....
-               SMALL_DRINK_PRICES, MEDIUM_DRINK_PRICES, LARGE_DRINK_PRICES, BAR_A_SITTING_CAPACITY, BAR_A_STANDING_CAPACITY, ... 
-               MEAL_PRICES, BAR_B_CAPACITY, ... 
-               DANCE_COST);
 
-solution = network_flow(edge_matrix, upper_bound_matrix, lower_bound_matrix, costs_matrix)
+[solution, maximum_profit, has_solved, index_map, edge_matrix] = solveModel(HOURS_OPEN, TICKET_TIER_PRICES, ....
+    SMALL_DRINK_PRICES, MEDIUM_DRINK_PRICES, LARGE_DRINK_PRICES, BAR_A_SITTING_CAPACITY, BAR_A_STANDING_CAPACITY, ... 
+    MEAL_PRICES, BAR_B_CAPACITY, ... 
+    DANCE_COST);
+
+if (has_solved)
+    fprintf('Maximum Profit: $%.2f\n', maximum_profit);
+    fprintf('Solution\n');
+    displayResult(solution, index_map, edge_matrix)
+    
+end

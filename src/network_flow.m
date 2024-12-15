@@ -1,5 +1,5 @@
 
-function edge_count_matrix = network_flow(edge_matrix, upper_bound_matrix, lower_bound_matrix, costs_matrix)
+function [edge_count_matrix, maximum_profit, fail_flag] = network_flow(edge_matrix, upper_bound_matrix, lower_bound_matrix, costs_matrix, sinks, sources)
     % Returns a matrix where A-B is the amount on the edge from A -> B
 
 
@@ -14,19 +14,36 @@ function edge_count_matrix = network_flow(edge_matrix, upper_bound_matrix, lower
 
     for edge_column = 1 : edge_count
         edge_start = edges(1, edge_column);
-        edge_end   = edges(2, edge_column); 
-
-        Aeq(edge_start, edge_column) = -1; 
-        Aeq(edge_end  , edge_column)  =  1; 
+        if (~ismember(edge_start, sources))
+            Aeq(edge_start, edge_column) = -1;
+        end
+        
+        edge_end   = edges(2, edge_column);
+        if (~ismember(edge_end, sinks)) 
+            Aeq(edge_end, edge_column) = 1; 
+        end
     end
-    % disp(size(Aeq))
+    % disp('Aeq')
+    % disp(sum(Aeq, 2))
+    % disp(Aeq)
+    % disp(rank(Aeq))
+    % disp('beq')
     % disp(size(beq))
     % disp(size(edge_cost))
-    disp(edge_upper_bound)
+    % disp('Upper Bound')
+    % disp(edge_upper_bound)
+    % disp('Lower Bound')
+    % disp(edge_lower_bound)
     options = optimset('display','off');
-    counts_on_edges = linprog(-edge_cost, [], [], Aeq, beq, edge_lower_bound, edge_upper_bound, options);
-
-    edge_count_matrix = vector_to_graph_matrix(n, edges, counts_on_edges); 
+    % disp(edge_cost)
+    [counts_on_edges, minimum_negative_profit, fail_flag] = linprog(-edge_cost, [], [], Aeq, beq, edge_lower_bound, edge_upper_bound, options);
+    maximum_profit = -minimum_negative_profit; 
+    % disp(counts_on_edges)
+    if (fail_flag == 1)
+        edge_count_matrix = vector_to_graph_matrix(n, edges, counts_on_edges); 
+    else 
+        edge_count_matrix = zeros(); 
+    end
 end
 
 
@@ -56,15 +73,22 @@ function [edges, edge_upper_bound, edge_lower_bound, edge_cost] = graph_matrix_t
 
     edge_cost = [];
     for edge_column = 1 : edge_count
-        edge_cost = [edge_cost, -costs_matrix(edges(1, edge_column), edges(2, edge_column))];
+        edge_cost = [edge_cost, costs_matrix(edges(1, edge_column), edges(2, edge_column))];
     end 
 end
 
 function [graph_matrix] = vector_to_graph_matrix(n, edges, counts_on_edges)
+    
     graph_matrix = zeros([n, n]);
     edge_count = size(edges, 2);
+    disp(n)
+    disp(edge_count);
+    disp(edges)
     % disp(size(edges, 2))
     for index = 1 : edge_count
-        graph_matrix(edges(1, index), edges(2, index)) = counts_on_edges(index);
+        % disp(index)
+        edge_start = edges(1, index); 
+        edge_end   = edges(2, index);
+        graph_matrix(edge_start, edge_end) = counts_on_edges(index);
     end
 end
