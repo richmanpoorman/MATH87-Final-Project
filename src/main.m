@@ -4,7 +4,7 @@
 %%%
 
 %% HOURS
-HOURS_OPEN = 3; 
+HOURS_OPEN = 12; 
 TICKET_TIER_PRICES = [30, 20, 10]; % Prices to get in every 4 hrs
 
 %% BAR A
