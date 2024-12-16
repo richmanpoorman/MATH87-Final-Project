@@ -81,9 +81,9 @@ function [graph_matrix] = vector_to_graph_matrix(n, edges, counts_on_edges)
     
     graph_matrix = zeros([n, n]);
     edge_count = size(edges, 2);
-    disp(n)
-    disp(edge_count);
-    disp(edges)
+    % disp(n)
+    % disp(edge_count);
+    % disp(edges)
     % disp(size(edges, 2))
     for index = 1 : edge_count
         % disp(index)
