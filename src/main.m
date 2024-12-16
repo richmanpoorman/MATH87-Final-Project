@@ -9,21 +9,21 @@ TICKET_TIER_PRICES = [30, 20, 10]; % Prices to get in every 4 hrs
 TOTAL_PERSON_CAP   = 1000;
 
 %% BAR A
-SMALL_DRINK_PRICES  = HOURS_OPEN : -2 : -HOURS_OPEN; % 5 * ones(HOURS_OPEN);
-MEDIUM_DRINK_PRICES = -HOURS_OPEN / 2 : 1 : HOURS_OPEN; % 6 * ones(HOURS_OPEN); 
-LARGE_DRINK_PRICES  = -HOURS_OPEN : 2 : HOURS_OPEN; % 7 * ones(HOURS_OPEN); 
+SMALL_DRINK_PRICES  = [-5	-4	-4	10	8	-8	7	9	-1	9	2	-5]; % 5 * ones(HOURS_OPEN);
+MEDIUM_DRINK_PRICES = [6	-8	4	-5	9	-9	-5	10	-6	2	-4	3]; % 6 * ones(HOURS_OPEN); 
+LARGE_DRINK_PRICES  = [8	2	5	1	8	-10	0	-10	8	-4	7	8]; % 7 * ones(HOURS_OPEN); 
 
 BAR_A_SITTING_CAPACITY = 10; 
 BAR_A_STANDING_CAPACITY = 2 * BAR_A_SITTING_CAPACITY; 
 
 %% BAR B 
-MEAL_PRICES = 10 * ones(HOURS_OPEN); 
+MEAL_PRICES = [-3	-6	5	5	2	-1	-7	6	-8	-5	8	8]; % 10 * ones(HOURS_OPEN); 
 
 BAR_B_CAPACITY = 25; 
 
 %% DANCE FLOOR
-DANCE_COST =  5 * ones(HOURS_OPEN);
-
+DANCE_COST      = [10	11	1	-2	8	9	-3	14	15	9	11	-2]; % 30 * ones(HOURS_OPEN)
+MINIMUM_DANCERS = [5	7	0	8	9	0	1	9	2	3	2	1]; % 0; 
 %%%
 %%% BUILD MODEL 
 %%%
@@ -63,7 +63,7 @@ function [index_map, edge_matrix, upper_bound_matrix, lower_bound_matrix, costs_
     buildGraph(hours_open, ticket_tier_prices, ....
                small_drink_prices, medium_drink_prices, large_drink_prices, bar_a_sitting_capacity, bar_a_standing_capacity, ... 
                meal_prices, bar_b_capacity, ... 
-               dance_costs, person_cap)
+               dance_costs, minimum_dancers, person_cap)
     
     location_options = ["bar a", "bar b", "dance floor"];
     at_hour_options = ["start", "end"]; 
@@ -96,6 +96,7 @@ function [index_map, edge_matrix, upper_bound_matrix, lower_bound_matrix, costs_
                 addEdge(start_index, end_index, bar_b_capacity, meal_prices(hour)); 
             elseif location == "dance floor"
                 addEdge(start_index, end_index, inf, -dance_costs(hour)); 
+                lower_bound_matrix(start_index, end_index) = minimum_dancers(hour);
             end
         end
     end
@@ -230,7 +231,7 @@ function [solution, maximum_profit, has_solved] = solveModel(index_map, edge_mat
     end
 end
 
-function displayResult(solution, index_map, edge_matrix, lower_bound_matrix, upper_bound_matrix, hours_open)
+function displayResult(solution, index_map, edge_matrix, lower_bound_matrix, upper_bound_matrix, costs_matrix, hours_open)
     % disp(index_map)
 
     % disp(solution)
@@ -332,7 +333,7 @@ function displayResult(solution, index_map, edge_matrix, lower_bound_matrix, upp
                 % set(arrow, 'position', [start_node, difference]); hold on 
 
                 on_edge = start_node + 0.25 * difference;
-                displayText(on_edge, sprintf('%d ≤ %d ≤ %d', lower_bound_matrix(row, column), solution(row, column), upper_bound_matrix(row, column)));
+                displayText(on_edge, sprintf('%d ≤ %d ≤ %d : $%.2f', lower_bound_matrix(row, column), solution(row, column), upper_bound_matrix(row, column), costs_matrix(row, column)));
                 % h = text(on_edge(1), on_edge(2), sprintf('%d', solution(row, column)));
                 % set(h, 'Color','k','FontSize', 4, 'FontWeight', 'bold'); hold on
                 % plot(edge(:, 1), edge(:, 2), 'b'); hold on
@@ -353,12 +354,12 @@ end
     buildGraph(HOURS_OPEN, TICKET_TIER_PRICES, ....
         SMALL_DRINK_PRICES, MEDIUM_DRINK_PRICES, LARGE_DRINK_PRICES, BAR_A_SITTING_CAPACITY, BAR_A_STANDING_CAPACITY, ... 
         MEAL_PRICES, BAR_B_CAPACITY, ... 
-        DANCE_COST, TOTAL_PERSON_CAP);
+        DANCE_COST, MINIMUM_DANCERS, TOTAL_PERSON_CAP);
 
 [solution, maximum_profit, has_solved] = solveModel(index_map, edge_matrix, upper_bound_matrix, lower_bound_matrix, costs_matrix);
 
 if (has_solved)
     fprintf('Maximum Profit: $%.2f\n', maximum_profit);
     fprintf('Solution\n');
-    displayResult(solution, index_map, edge_matrix, lower_bound_matrix, upper_bound_matrix, HOURS_OPEN)
+    displayResult(solution, index_map, edge_matrix, lower_bound_matrix, upper_bound_matrix, costs_matrix, HOURS_OPEN)
 end
