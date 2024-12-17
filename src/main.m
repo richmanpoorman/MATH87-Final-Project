@@ -22,7 +22,7 @@ MEAL_PRICES = [-3	-6	5	5	2	-1	-7	6	-8	-5	8	8]; % 10 * ones(HOURS_OPEN);
 BAR_B_CAPACITY = 25; 
 
 %% DANCE FLOOR
-DANCE_COST      = [10	11	1	-2	8	9	-3	14	15	9	11	-2]; % 30 * ones(HOURS_OPEN)
+DANCE_COST      = [10	11	1	2	8	9	3	14	15	9	11	2]; % 30 * ones(HOURS_OPEN)
 MINIMUM_DANCERS = [5	7	0	8	9	0	1	9	2	3	2	1]; % 0; 
 %%%
 %%% BUILD MODEL 
@@ -257,6 +257,79 @@ function displayResult(solution, index_map, edge_matrix, lower_bound_matrix, upp
         end
     end
 
+    function getItemsSold() 
+        small_drinks         = 0; 
+        small_drinks_profit  = 0; 
+        medium_drinks        = 0; 
+        medium_drinks_profit = 0;
+        large_drinks         = 0; 
+        large_drinks_profit  = 0; 
+
+        meals        = 0; 
+        meals_profit = 0;
+
+        dancers          = 0; 
+        dance_floor_loss = 0; 
+
+
+        for hour = 1 : hours_open
+            %% Small Drinks 
+            bar_a_start = index_map({[hour, "bar a", "start"]}); 
+            bar_a_end   = index_map({[hour, "bar a", "end"]}); 
+            current_dance_floor = index_map({[hour, "dance floor", "start"]});
+            hourly_small_drinks = solution(bar_a_start, current_dance_floor);
+            hourly_small_drinks_profit = hourly_small_drinks * costs_matrix(bar_a_start, current_dance_floor);
+            if hour < hours_open
+                next_dance_floor = index_map({[hour + 1, "dance floor", "start"]});
+                hourly_small_drinks = hourly_small_drinks + solution(bar_a_end, next_dance_floor);
+                hourly_small_drinks_profit = hourly_small_drinks_profit + solution(bar_a_end, next_dance_floor) * costs_matrix(bar_a_end, next_dance_floor);
+            end
+            small_drinks = small_drinks + hourly_small_drinks; 
+            small_drinks_profit = small_drinks_profit + hourly_small_drinks_profit;
+
+            %% Medium Drinks 
+            hourly_medium_drinks       = solution(bar_a_start, bar_a_end); 
+            hourly_medium_drinks_profit = hourly_medium_drinks * costs_matrix(bar_a_start, bar_a_end);
+            medium_drinks = medium_drinks + hourly_medium_drinks; 
+            medium_drinks_profit = medium_drinks_profit + hourly_medium_drinks_profit;
+
+            %% Large Drinks 
+            tickets = ["tier 1 ticket", "tier 2 ticket", "tier 3 ticket"]; 
+            for ticket = tickets
+                ticket_index = index_map({ticket}); 
+                hourly_large_drinks = solution(ticket_index, bar_a_start);
+                hourly_large_drinks_profit =hourly_large_drinks * costs_matrix(ticket_index, bar_a_start);
+                large_drinks = large_drinks + hourly_large_drinks; 
+                large_drinks_profit = large_drinks_profit + hourly_large_drinks_profit; 
+            end
+
+            %% Meals 
+            bar_b_start = index_map({[hour, "bar b", "start"]}); 
+            bar_b_end   = index_map({[hour, "bar b", "end"]});
+            hourly_meals = solution(bar_b_start, bar_b_end);
+            hourly_meals_profit = hourly_meals * costs_matrix(bar_b_start, bar_b_end);
+            meals = meals + hourly_meals; 
+            meals_profit = meals_profit + hourly_meals_profit;
+
+            %% Dancers 
+            dance_floor_start = index_map({[hour, "dance floor", "start"]}); 
+            dance_floor_end   = index_map({[hour, "dance floor", "end"]});
+            hourly_dancers = solution(dance_floor_start, dance_floor_end);
+            hourly_dance_floor_loss = hourly_dancers * costs_matrix(dance_floor_start, dance_floor_end);
+            dancers = dancers + hourly_dancers; 
+            dance_floor_loss = dance_floor_loss + hourly_dance_floor_loss;
+
+        end 
+
+        fprintf('Small Drinks Sold: %d = $%.2f\n', small_drinks, small_drinks_profit);
+        fprintf('Medium Drinks Sold: %d = $%.2f\n', medium_drinks, medium_drinks_profit);
+        fprintf('Large Drinks Sold: %d = $%.2f\n', large_drinks, large_drinks_profit);
+
+        fprintf('Meals Sold: %d = $%.2f\n', meals, meals_profit);
+
+        fprintf('Dance floor dancers: %d = $%.2f\n', dancers, dance_floor_loss);
+    end
+
     function displayGraph() 
         locations = ["bar a", "dance floor", "bar b"]; 
         
@@ -301,14 +374,14 @@ function displayResult(solution, index_map, edge_matrix, lower_bound_matrix, upp
         % Draw the three tickets
         tickets = ["tier 1 ticket", "tier 2 ticket", "tier 3 ticket"];
         for ticket_index = 1 : length(tickets)
-            ticket_position = [ticket_index + 0.25, 0.5];
+            ticket_position = [ticket_index + 0.25, 0];
             addNodeToGraph(tickets(ticket_index), ticket_position, tickets(ticket_index));
         end
 
         % Draw entrance and source
-        entrance_position = [2, 0]; 
+        entrance_position = [2, -0.5]; 
         addNodeToGraph("entrance", entrance_position, "entrance");
-        source_position = [2, -0.5]; 
+        source_position = [2, -1]; 
         addNodeToGraph("source", source_position, "source");
 
         % Draw the edges
@@ -344,6 +417,7 @@ function displayResult(solution, index_map, edge_matrix, lower_bound_matrix, upp
     end
 
     getTotalTickets();
+    getItemsSold();
     displayGraph();
 end
 %%% 
